@@ -12,8 +12,6 @@
         body { font-family: 'Inter', sans-serif; }
         .tab-button.active { background-color: #2563eb; color: white; }
         .tab-button:not(.active) { color: #4b5563; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -32,21 +30,18 @@
         </div>
 
         <main id="main-content">
-            <div id="loading-section" class="text-center p-10">
-                <div class="loader"></div>
-                <p>A ligar à base de dados...</p>
-            </div>
-
             <!-- SEÇÃO: SELEÇÃO DE CLIENTE (TELA INICIAL) -->
-            <div id="client-selection-section" class="hidden">
+            <div id="client-selection-section">
                  <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-center">Selecionar Cliente</h2>
                     <div class="mb-4">
                         <label for="city-filter" class="block text-sm font-medium text-gray-700">Filtrar por Cidade:</label>
-                        <select id="city-filter" onchange="renderClientList()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+                        <select id="city-filter" onchange="renderClientList()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </select>
                     </div>
-                    <div id="client-list-selection" class="space-y-3"></div>
-                    <button onclick="startNewOrderWithoutClient()" class="mt-6 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-md">Ou Iniciar Pedido Avulso (sem cliente)</button>
+                    <div id="client-list-selection" class="space-y-3">
+                    </div>
+                    <button onclick="startNewOrderWithoutClient()" class="mt-6 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-md transition duration-300">Ou Iniciar Pedido Avulso (sem cliente)</button>
                  </div>
             </div>
 
@@ -132,136 +127,156 @@
     
     <div id="feedback-message" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg"><p></p></div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
-
-        // TODO: const firebaseConfig = {   apiKey: "AIzaSyCrFQKAgGrPn5lchuuM4jmNzbyhLypdaHE",   authDomain: "produtos-textil.firebaseapp.com",   projectId: "produtos-textil",   storageBucket: "produtos-textil.firebasestorage.app",   messagingSenderId: "241843410521",   appId: "1:241843410521:web:7ab141d5624a48d1f24348",   measurementId: "G-VB7LS61CYX" };
-        const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
-            authDomain: "SEU_AUTH_DOMAIN",
-            projectId: "SEU_PROJECT_ID",
-            storageBucket: "SEU_STORAGE_BUCKET",
-            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-            appId: "SEU_APP_ID"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
+    <script>
         // --- STATE MANAGEMENT ---
         let products = [];
         let clients = [];
         let currentOrder = [];
         let selectedClient = null;
 
-        // --- COLLECTIONS ---
-        const productsCol = collection(db, 'products');
-        const clientsCol = collection(db, 'clients');
-
         // --- INITIALIZATION ---
-        async function initializeAppAndData() {
-            document.getElementById('loading-section').classList.remove('hidden');
-            await loadProductsFromFirestore();
-            await loadClientsFromFirestore();
-            document.getElementById('loading-section').classList.add('hidden');
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProductsFromStorage();
+            loadClientsFromStorage();
             renderClientSelectionPage();
             showSection('client-selection-section');
-        }
-        
-        document.addEventListener('DOMContentLoaded', initializeAppAndData);
+        });
 
-        // --- DATA FIRESTORE FUNCTIONS ---
-        async function loadProductsFromFirestore() {
-            const querySnapshot = await getDocs(productsCol);
-            products = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // --- DATA STORAGE FUNCTIONS (LOCAL STORAGE) ---
+        function loadProductsFromStorage() {
+            const data = localStorage.getItem('textileAppProducts');
+            if (data) {
+                products = JSON.parse(data);
+            } else {
+                products = [
+                    { "code": "100015", "description": "Jogo Toalhas de Cozinha Semaninha", "price_avista": 27.44, "price_30d": 28.81, "price_60d": 30.25 },
+                    { "code": "100021", "description": "Toalha de Cozinha p/ Bordar", "price_avista": 3.37, "price_30d": 3.54, "price_60d": 3.71 },
+                    { "code": "100022", "description": "Toalha de Cozinha Estampada", "price_avista": 3.63, "price_30d": 3.82, "price_60d": 4.01 },
+                    { "code": "100085", "description": "Toalha de Cozinha Felpuda Estampada", "price_avista": 4.17, "price_30d": 4.38, "price_60d": 4.60 },
+                    { "code": "100092", "description": "Toalha de Cozinha Felpuda Xadrez", "price_avista": 3.27, "price_30d": 3.43, "price_60d": 3.60 },
+                    { "code": "100101", "description": "Toalha de Cozinha Transfer", "price_avista": 3.76, "price_30d": 3.94, "price_60d": 4.14 },
+                    { "code": "100111", "description": "Toalha de Cozinha Gourmand", "price_avista": 6.90, "price_30d": 7.25, "price_60d": 7.61 },
+                    { "code": "100012", "description": "Kit Social p/ Bordar", "price_avista": 4.36, "price_30d": 4.58, "price_60d": 4.81 },
+                    { "code": "100016", "description": "Lavabo", "price_avista": 2.65, "price_30d": 2.78, "price_60d": 2.92 },
+                    { "code": "100018", "description": "Lavabo Estampada", "price_avista": 3.04, "price_30d": 3.19, "price_60d": 3.35 },
+                    { "code": "100026", "description": "Social Estampada", "price_avista": 1.76, "price_30d": 1.85, "price_60d": 1.94 },
+                    { "code": "100027", "description": "Kit Social Estampada", "price_avista": 5.46, "price_30d": 5.74, "price_60d": 6.03 },
+                    { "code": "100029", "description": "Social p/ Bordar", "price_avista": 1.39, "price_30d": 1.46, "price_60d": 1.53 },
+                    { "code": "100074", "description": "Lavabo Athelier", "price_avista": 4.36, "price_30d": 4.58, "price_60d": 4.81 },
+                    { "code": "100083", "description": "Lavabo c/Transfer", "price_avista": 3.39, "price_30d": 3.57, "price_60d": 3.75 },
+                    { "code": "100131", "description": "Social p/ Sublimação", "price_avista": 1.64, "price_30d": 1.73, "price_60d": 1.82 },
+                    { "code": "100142", "description": "Lavabo p/ Sublimação Total Somente Branca", "price_avista": 3.12, "price_30d": 3.28, "price_60d": 3.44 },
+                    { "code": "100145", "description": "Lavabo Fitness", "price_avista": 5.46, "price_30d": 5.74, "price_60d": 6.03 },
+                    { "code": "100151", "description": "Lavabo Infantil", "price_avista": 5.18, "price_30d": 5.43, "price_60d": 5.70 },
+                    { "code": "100003", "description": "Jogo Popular-4 Peças", "price_avista": 32.79, "price_30d": 34.43, "price_60d": 36.16 },
+                    { "code": "100005", "description": "Jogo Nobre p/ Bordar - 4 Peças", "price_avista": 44.42, "price_30d": 46.64, "price_60d": 48.98 },
+                    { "code": "100025", "description": "Jogo Carina - 2 Peças", "price_avista": 35.98, "price_30d": 37.78, "price_60d": 39.66 },
+                    { "code": "100030", "description": "Jogo Nobre Bordado - 2 Peças", "price_avista": 29.00, "price_30d": 30.45, "price_60d": 31.98 },
+                    { "code": "100031", "description": "Jogo Nobre Bordado - 4 Peças", "price_avista": 51.16, "price_30d": 53.73, "price_60d": 56.42 },
+                    { "code": "100032", "description": "Jogo Popular-2 Peças", "price_avista": 19.81, "price_30d": 20.80, "price_60d": 21.85 },
+                    { "code": "100034", "description": "Jogo Nobre p/ Bordar-2 Peças", "price_avista": 25.63, "price_30d": 26.91, "price_60d": 28.26 },
+                    { "code": "100035", "description": "Jogo Carina - 4 Peças", "price_avista": 65.12, "price_30d": 68.38, "price_60d": 71.79 },
+                    { "code": "100051", "description": "Jogo Luxo-2 Peças", "price_avista": 31.07, "price_30d": 32.63, "price_60d": 34.26 },
+                    { "code": "100052", "description": "Jogo Luxo - 4 Peças", "price_avista": 55.30, "price_30d": 58.06, "price_60d": 60.96 },
+                    { "code": "100067", "description": "Jogo Jasmim-2 Peças", "price_avista": 36.32, "price_30d": 38.13, "price_60d": 40.04 },
+                    { "code": "100071", "description": "Jogo Jasmim-4 Peças", "price_avista": 65.79, "price_30d": 69.09, "price_60d": 72.54 },
+                    { "code": "100112", "description": "Jogo Athelier-2 Peças", "price_avista": 39.12, "price_30d": 41.08, "price_60d": 43.14 },
+                    { "code": "100113", "description": "Jogo Athelier - 4 Peças", "price_avista": 71.42, "price_30d": 74.99, "price_60d": 78.74 },
+                    { "code": "100114", "description": "Jogo Charme-2 Peças", "price_avista": 43.69, "price_30d": 45.87, "price_60d": 48.16 },
+                    { "code": "100115", "description": "Jogo Charme - 4 Peças", "price_avista": 80.51, "price_30d": 84.54, "price_60d": 88.77 },
+                    { "code": "100116", "description": "Jogo Esmeralda - 2 Peças", "price_avista": 46.94, "price_30d": 49.29, "price_60d": 51.75 },
+                    { "code": "100117", "description": "Jogo Esmeralda -4 Peças", "price_avista": 87.04, "price_30d": 91.39, "price_60d": 95.96 },
+                    { "code": "100119", "description": "Jogo Paris - 2 Peças", "price_avista": 42.80, "price_30d": 44.94, "price_60d": 47.18 },
+                    { "code": "100120", "description": "Jogo Paris - 4 Peças", "price_avista": 78.75, "price_30d": 82.69, "price_60d": 86.83 },
+                    { "code": "100121", "description": "Jogo Veneza - 2 Peças", "price_avista": 45.10, "price_30d": 47.36, "price_60d": 49.73 },
+                    { "code": "100148", "description": "Jogo Veneza - 4 Peças", "price_avista": 83.35, "price_30d": 87.53, "price_60d": 91.91 },
+                    { "code": "100125", "description": "Jogo Melissa - 2 Peças", "price_avista": 32.43, "price_30d": 34.05, "price_60d": 35.75 },
+                    { "code": "100126", "description": "Jogo Melissa -4 Peças", "price_avista": 58.03, "price_30d": 60.93, "price_60d": 63.97 },
+                    { "code": "100133", "description": "Jogo Requinte-2 Peças", "price_avista": 24.60, "price_30d": 25.83, "price_60d": 27.12 },
+                    { "code": "100134", "description": "Jogo Requinte - 4 Peças", "price_avista": 42.37, "price_30d": 44.48, "price_60d": 46.71 },
+                    { "code": "100135", "description": "Jogo Safari-2 Peças", "price_avista": 34.80, "price_30d": 36.54, "price_60d": 38.36 },
+                    { "code": "100136", "description": "Jogo Safari-4 Peças", "price_avista": 62.77, "price_30d": 65.91, "price_60d": 69.21 },
+                    { "code": "100137", "description": "Jogo Grécia 2 Peças", "price_avista": 50.59, "price_30d": 53.12, "price_60d": 55.78 },
+                    { "code": "100138", "description": "Jogo Grecia - 4 Peças", "price_avista": 94.36, "price_30d": 99.07, "price_60d": 104.03 },
+                    { "code": "100146", "description": "Jogo Athenas 2 Peças", "price_avista": 54.17, "price_30d": 56.87, "price_60d": 59.71 },
+                    { "code": "100149", "description": "Jogo Athenas 4 Peças", "price_avista": 97.34, "price_30d": 102.20, "price_60d": 107.31 },
+                    { "code": "100132", "description": "Kit Banho Infantil Cristal - 2 Peças (Caixinha)", "price_avista": 44.42, "price_30d": 46.64, "price_60d": 48.98 },
+                    { "code": "100006", "description": "Banho Nobre Bordada", "price_avista": 14.84, "price_30d": 15.58, "price_60d": 16.36 },
+                    { "code": "100007", "description": "Banho Nobre Baby Bordada", "price_avista": 17.30, "price_30d": 18.16, "price_60d": 19.07 },
+                    { "code": "100008", "description": "Banho Popular", "price_avista": 8.76, "price_30d": 9.20, "price_60d": 9.66 },
+                    { "code": "100013", "description": "Banho Europa", "price_avista": 22.43, "price_30d": 23.55, "price_60d": 24.73 },
+                    { "code": "100017", "description": "Banho Paris", "price_avista": 24.63, "price_30d": 25.86, "price_60d": 27.16 },
+                    { "code": "100019", "description": "Banho Nobre p/ Bordar", "price_avista": 13.13, "price_30d": 13.79, "price_60d": 14.48 },
+                    { "code": "100023", "description": "Banho Charme", "price_avista": 26.11, "price_30d": 27.40, "price_60d": 28.77 },
+                    { "code": "100037", "description": "Banho Bebê Aveludada c/ Capuz", "price_avista": 14.57, "price_30d": 15.30, "price_60d": 16.07 },
+                    { "code": "100040", "description": "Banho Requinte", "price_avista": 12.31, "price_30d": 12.93, "price_60d": 13.57 },
+                    { "code": "100048", "description": "Banho Luxo", "price_avista": 15.66, "price_30d": 16.45, "price_60d": 17.27 },
+                    { "code": "100053", "description": "Banho Safari", "price_avista": 18.78, "price_30d": 19.72, "price_60d": 20.70 },
+                    { "code": "100054", "description": "Banhão Aveludada Toalha de Praia Miami", "price_avista": 36.65, "price_30d": 38.48, "price_60d": 40.40 },
+                    { "code": "100060", "description": "Banho Jasmim", "price_avista": 20.26, "price_30d": 21.28, "price_60d": 22.34 },
+                    { "code": "100065", "description": "Banho Athenas", "price_avista": 30.34, "price_30d": 31.86, "price_60d": 33.44 },
+                    { "code": "100068", "description": "Banho Carina", "price_avista": 20.08, "price_30d": 21.08, "price_60d": 22.14 },
+                    { "code": "100072", "description": "Banho Athelier", "price_avista": 22.49, "price_30d": 23.62, "price_60d": 24.81 },
+                    { "code": "100082", "description": "Toalha de Chão Felpuda", "price_avista": 6.04, "price_30d": 6.35, "price_60d": 6.67 },
+                    { "code": "100086", "description": "Toalha de Praia Listrada", "price_avista": 23.51, "price_30d": 24.68, "price_60d": 25.91 },
+                    { "code": "100088", "description": "Banho Jacquard", "price_avista": 18.46, "price_30d": 19.38, "price_60d": 20.36 },
+                    { "code": "100090", "description": "Banho Madri", "price_avista": 16.64, "price_30d": 17.47, "price_60d": 18.34 },
+                    { "code": "200090", "description": "Banhão Madri", "price_avista": 21.23, "price_30d": 22.29, "price_60d": 23.40 },
+                    { "code": "100094", "description": "Banho Infantil Cristal", "price_avista": 18.49, "price_30d": 19.41, "price_60d": 20.38 },
+                    { "code": "100095", "description": "Banho Grécia", "price_avista": 31.22, "price_30d": 32.79, "price_60d": 34.43 },
+                    { "code": "100097", "description": "Banho Veneza", "price_avista": 27.26, "price_30d": 28.62, "price_60d": 30.05 },
+                    { "code": "100099", "description": "Banho Esmeralda", "price_avista": 28.26, "price_30d": 29.67, "price_60d": 31.15 },
+                    { "code": "100102", "description": "Banho Hotel", "price_avista": 32.95, "price_30d": 34.59, "price_60d": 36.32 },
+                    { "code": "100123", "description": "Banho Melissa", "price_avista": 17.81, "price_30d": 18.71, "price_60d": 19.64 },
+                    { "code": "100141", "description": "Banho Soft Color", "price_avista": 16.13, "price_30d": 16.94, "price_60d": 17.79 },
+                    { "code": "100143", "description": "Banho p/ Sublimação Total", "price_avista": 16.04, "price_30d": 16.85, "price_60d": 17.69 },
+                    { "code": "100004", "description": "Rosto Nobre Bordada", "price_avista": 7.33, "price_30d": 7.69, "price_60d": 8.08 },
+                    { "code": "100009", "description": "Rosto Popular", "price_avista": 4.21, "price_30d": 4.42, "price_60d": 4.63 },
+                    { "code": "100020", "description": "Rosto Nobre p/ Bordar", "price_avista": 5.67, "price_30d": 5.96, "price_60d": 6.26 },
+                    { "code": "100041", "description": "Rosto Charme", "price_avista": 10.75, "price_30d": 11.29, "price_60d": 11.86 },
+                    { "code": "100047", "description": "Rosto Requinte", "price_avista": 5.46, "price_30d": 5.74, "price_60d": 6.03 },
+                    { "code": "100049", "description": "Rosto Luxo", "price_avista": 8.58, "price_30d": 9.00, "price_60d": 9.45 },
+                    { "code": "100056", "description": "Rosto Safari", "price_avista": 9.18, "price_30d": 9.64, "price_60d": 10.12 },
+                    { "code": "100061", "description": "Rosto Jasmim", "price_avista": 9.22, "price_30d": 9.68, "price_60d": 10.17 },
+                    { "code": "100066", "description": "Rosto Athenas", "price_avista": 14.62, "price_30d": 15.35, "price_60d": 16.12 },
+                    { "code": "100069", "description": "Rosto Carina", "price_avista": 9.06, "price_30d": 9.51, "price_60d": 9.98 },
+                    { "code": "100070", "description": "Rosto Europa", "price_avista": 10.12, "price_30d": 10.63, "price_60d": 11.16 },
+                    { "code": "100073", "description": "Rosto Athelier", "price_avista": 9.80, "price_30d": 10.29, "price_60d": 10.81 },
+                    { "code": "100084", "description": "Rosto Paris", "price_avista": 11.33, "price_30d": 11.89, "price_60d": 12.49 },
+                    { "code": "100096", "description": "Rosto Grécia", "price_avista": 12.54, "price_30d": 13.17, "price_60d": 13.82 },
+                    { "code": "100098", "description": "Rosto Veneza", "price_avista": 11.02, "price_30d": 11.57, "price_60d": 12.14 },
+                    { "code": "100100", "description": "Rosto Esmeralda", "price_avista": 11.85, "price_30d": 12.44, "price_60d": 13.06 },
+                    { "code": "100103", "description": "Rosto Hotel", "price_avista": 14.61, "price_30d": 15.33, "price_60d": 16.10 },
+                    { "code": "100105", "description": "Rosto Salão de Beleza", "price_avista": 6.85, "price_30d": 7.20, "price_60d": 7.56 },
+                    { "code": "100106", "description": "Rosto Jacquard", "price_avista": 7.94, "price_30d": 8.34, "price_60d": 8.75 },
+                    { "code": "100124", "description": "Rosto Melissa", "price_avista": 7.79, "price_30d": 8.18, "price_60d": 8.59 },
+                    { "code": "100144", "description": "Rosto p/ Sublimação Total", "price_avista": 6.50, "price_30d": 6.82, "price_60d": 7.16 },
+                    { "code": "100002", "description": "Piso Felpudo Pé", "price_avista": 9.57, "price_30d": 10.05, "price_60d": 10.56 },
+                    { "code": "100104", "description": "Piso Felpudo Hotel", "price_avista": 14.61, "price_30d": 15.33, "price_60d": 16.10 },
+                    { "code": "100107", "description": "Colcha de Felpa Califórnia Casal", "price_avista": 126.98, "price_30d": 133.34, "price_60d": 140.01 },
+                    { "code": "100110", "description": "Colcha de Felpa Califórnia Solteiro", "price_avista": 107.70, "price_30d": 113.08, "price_60d": 118.74 },
+                    { "code": "100010", "description": "Toalhas de 2ª Qualidade", "price_avista": 44.62, "price_30d": 46.85, "price_60d": 49.20 },
+                    { "code": "100057", "description": "Felpudo em Metro", "price_avista": 20.18, "price_30d": 21.19, "price_60d": 22.25 }
+                ];
+                saveProductsToStorage();
+            }
         }
+        function saveProductsToStorage() { localStorage.setItem('textileAppProducts', JSON.stringify(products)); }
 
-        async function loadClientsFromFirestore() {
-            const querySnapshot = await getDocs(clientsCol);
-            clients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-
-        window.addClient = async function() {
-            const newClient = {
-                name: document.getElementById('new-client-name').value.trim(),
-                cnpj: document.getElementById('new-client-cnpj').value.trim(),
-                ie: document.getElementById('new-client-ie').value.trim(),
-                address: document.getElementById('new-client-address').value.trim(),
-                city: document.getElementById('new-client-city').value.trim(),
-                state: document.getElementById('new-client-state').value.trim(),
-                phone: document.getElementById('new-client-phone').value.trim(),
-            };
-            if (!newClient.name || !newClient.city) {
-                showFeedback('Nome e Cidade são obrigatórios.', 'error');
-                return;
-            }
-            try {
-                const docRef = await addDoc(clientsCol, newClient);
-                clients.push({ id: docRef.id, ...newClient });
-                renderClientManagementList();
-                ['new-client-name', 'new-client-cnpj', 'new-client-ie', 'new-client-address', 'new-client-city', 'new-client-state', 'new-client-phone'].forEach(id => document.getElementById(id).value = '');
-                showFeedback('Cliente adicionado!', 'success');
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                showFeedback('Erro ao adicionar cliente.', 'error');
+        function loadClientsFromStorage() {
+            const data = localStorage.getItem('textileAppClients');
+            if (data) {
+                clients = JSON.parse(data);
+            } else {
+                clients = []; // Começa sem clientes
+                saveClientsToStorage();
             }
         }
-
-        window.removeClient = async function(clientId) {
-            try {
-                await deleteDoc(doc(db, 'clients', clientId));
-                clients = clients.filter(c => c.id !== clientId);
-                renderClientManagementList();
-                showFeedback('Cliente removido.', 'success');
-            } catch (e) {
-                console.error("Error removing document: ", e);
-                showFeedback('Erro ao remover cliente.', 'error');
-            }
-        }
-
-        window.addProduct = async function() {
-            const newProduct = {
-                code: document.getElementById('new-prod-code').value.trim(),
-                description: document.getElementById('new-prod-desc').value.trim(),
-                price_avista: parseFloat(document.getElementById('new-prod-price-avista').value.replace(',', '.')) || 0,
-                price_30d: parseFloat(document.getElementById('new-prod-price-30d').value.replace(',', '.')) || 0,
-                price_60d: parseFloat(document.getElementById('new-prod-price-60d').value.replace(',', '.')) || 0,
-            };
-             if (!newProduct.code || !newProduct.description) {
-                showFeedback('Código e Descrição são obrigatórios.', 'error');
-                return;
-            }
-            try {
-                const docRef = await addDoc(productsCol, newProduct);
-                products.push({ id: docRef.id, ...newProduct });
-                renderProductManagementList();
-                ['new-prod-code', 'new-prod-desc', 'new-prod-price-avista', 'new-prod-price-30d', 'new-prod-price-60d'].forEach(id => document.getElementById(id).value = '');
-                showFeedback('Produto adicionado!', 'success');
-            } catch (e) {
-                 console.error("Error adding document: ", e);
-                showFeedback('Erro ao adicionar produto.', 'error');
-            }
-        }
-
-        window.removeProduct = async function(productId) {
-             try {
-                await deleteDoc(doc(db, 'products', productId));
-                products = products.filter(p => p.id !== productId);
-                renderProductManagementList();
-                showFeedback('Produto removido.', 'success');
-            } catch (e) {
-                console.error("Error removing document: ", e);
-                showFeedback('Erro ao remover produto.', 'error');
-            }
-        }
+        function saveClientsToStorage() { localStorage.setItem('textileAppClients', JSON.stringify(clients)); }
 
         // --- UI NAVIGATION & RENDERING ---
-        window.showSection = function(sectionId) {
-            ['loading-section', 'client-selection-section', 'order-section', 'clients-section', 'products-section'].forEach(id => {
+        function showSection(sectionId) {
+            ['client-selection-section', 'order-section', 'clients-section', 'products-section'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(sectionId).classList.remove('hidden');
@@ -270,7 +285,7 @@
             document.getElementById('main-nav').classList.toggle('hidden', !showNav);
         }
 
-        window.changeTab = function(tabName) {
+        function changeTab(tabName) {
             showSection(`${tabName}-section`);
             ['order', 'clients', 'products'].forEach(name => {
                 document.getElementById(`tab-${name}`).classList.remove('active');
@@ -281,7 +296,7 @@
             if (tabName === 'products') renderProductManagementList();
         }
 
-        window.backToClientSelection = function() {
+        function backToClientSelection() {
             selectedClient = null;
             clearOrder(true);
             showSection('client-selection-section');
@@ -295,7 +310,8 @@
             cityFilter.innerHTML = uniqueCities.map(city => `<option value="${city}">${city}</option>`).join('');
             renderClientList();
         }
-        window.renderClientList = function() {
+
+        function renderClientList() {
             const listEl = document.getElementById('client-list-selection');
             const selectedCity = document.getElementById('city-filter').value;
             const filteredClients = selectedCity === 'Todas' ? clients : clients.filter(c => c.city === selectedCity);
@@ -314,7 +330,7 @@
             });
         }
     
-        window.selectClient = function(clientId) {
+        function selectClient(clientId) {
             selectedClient = clients.find(c => c.id === clientId);
             if (selectedClient) {
                 document.getElementById('client-name').value = selectedClient.name;
@@ -330,9 +346,9 @@
             }
         }
     
-        window.startNewOrderWithoutClient = function() {
+        function startNewOrderWithoutClient() {
             selectedClient = null;
-            clearOrder(true);
+            clearOrder(true); // Limpa tudo
             showSection('order-section');
             document.getElementById('tab-order').classList.add('active');
         }
@@ -348,19 +364,48 @@
                     <div class="flex justify-between items-center">
                         <div>
                             <p class="font-semibold">${client.name}</p>
-                            <p class="text-sm text-gray-500">${client.city} - ${client.cnpj || ''}</p>
+                            <p class="text-sm text-gray-500">${client.city} - ${client.cnpj}</p>
                         </div>
-                        <button onclick="removeClient('${client.id}')" class="text-red-500 font-semibold">Remover</button>
+                        <button onclick="removeClient(${client.id})" class="text-red-500 font-semibold">Remover</button>
                     </div>`;
                 listEl.appendChild(clientEl);
             });
+        }
+
+        function addClient() {
+            const client = {
+                id: Date.now(),
+                name: document.getElementById('new-client-name').value,
+                cnpj: document.getElementById('new-client-cnpj').value,
+                ie: document.getElementById('new-client-ie').value,
+                address: document.getElementById('new-client-address').value,
+                city: document.getElementById('new-client-city').value,
+                state: document.getElementById('new-client-state').value,
+                phone: document.getElementById('new-client-phone').value,
+            };
+            if (!client.name || !client.city) {
+                showFeedback('Nome e Cidade são obrigatórios.', 'error');
+                return;
+            }
+            clients.push(client);
+            saveClientsToStorage();
+            renderClientManagementList();
+            ['new-client-name', 'new-client-cnpj', 'new-client-ie', 'new-client-address', 'new-client-city', 'new-client-state', 'new-client-phone'].forEach(id => document.getElementById(id).value = '');
+            showFeedback('Cliente adicionado!', 'success');
+        }
+
+        function removeClient(clientId) {
+            clients = clients.filter(c => c.id !== clientId);
+            saveClientsToStorage();
+            renderClientManagementList();
+            showFeedback('Cliente removido.', 'success');
         }
 
         // --- PRODUCT MANAGEMENT PAGE ---
         function renderProductManagementList() {
             const listEl = document.getElementById('product-list');
             listEl.innerHTML = '';
-            products.forEach((product) => {
+            products.forEach((product, index) => {
                 const prodEl = document.createElement('div');
                 prodEl.className = 'p-3 bg-gray-100 rounded-lg border';
                 prodEl.innerHTML = `
@@ -369,14 +414,40 @@
                             <p class="font-semibold">${product.code} - ${product.description}</p>
                             <p class="text-xs text-gray-500">Vista: R$${product.price_avista.toFixed(2)} | 30d: R$${product.price_30d.toFixed(2)} | 60d: R$${product.price_60d.toFixed(2)}</p>
                         </div>
-                        <button onclick="removeProduct('${product.id}')" class="text-red-500 font-semibold">Remover</button>
+                        <button onclick="removeProduct(${index})" class="text-red-500 font-semibold">Remover</button>
                     </div>`;
                 listEl.appendChild(prodEl);
             });
         }
+
+        function addProduct() {
+            const newProduct = {
+                code: document.getElementById('new-prod-code').value.trim(),
+                description: document.getElementById('new-prod-desc').value.trim(),
+                price_avista: parseFloat(document.getElementById('new-prod-price-avista').value.replace(',', '.')) || 0,
+                price_30d: parseFloat(document.getElementById('new-prod-price-30d').value.replace(',', '.')) || 0,
+                price_60d: parseFloat(document.getElementById('new-prod-price-60d').value.replace(',', '.')) || 0,
+            };
+             if (!newProduct.code || !newProduct.description) {
+                showFeedback('Código e Descrição são obrigatórios.', 'error');
+                return;
+            }
+            products.push(newProduct);
+            saveProductsToStorage();
+            renderProductManagementList();
+            ['new-prod-code', 'new-prod-desc', 'new-prod-price-avista', 'new-prod-price-30d', 'new-prod-price-60d'].forEach(id => document.getElementById(id).value = '');
+            showFeedback('Produto adicionado!', 'success');
+        }
+
+        function removeProduct(index) {
+            products.splice(index, 1);
+            saveProductsToStorage();
+            renderProductManagementList();
+            showFeedback('Produto removido.', 'success');
+        }
     
         // --- ORDER PAGE ---
-        window.addItemToOrder = function() {
+        function addItemToOrder() {
             const codeInput = document.getElementById('product-code');
             const quantityInput = document.getElementById('quantity');
             const code = codeInput.value.trim();
@@ -436,12 +507,12 @@
             document.getElementById('order-total').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         }
 
-        window.removeItemFromOrder = function(index) {
+        function removeItemFromOrder(index) {
             currentOrder.splice(index, 1);
             renderOrder();
         }
 
-        window.clearOrder = function(clearClientFields) {
+        function clearOrder(clearClientFields) {
             currentOrder = [];
             renderOrder();
             if (clearClientFields) {
@@ -452,13 +523,12 @@
         }
 
         // --- PDF GENERATION ---
-        window.generateOrderPDF = function() {
+        function generateOrderPDF() {
             if (currentOrder.length === 0) {
                 showFeedback('Adicione itens ao pedido primeiro.', 'error'); return;
             }
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
-            // ... (código de desenho do PDF mantido)
             const clientName = document.getElementById('client-name').value;
             const clientCnpj = document.getElementById('client-cnpj').value;
             const clientIe = document.getElementById('client-ie').value;
@@ -575,6 +645,22 @@
             else { feedbackEl.classList.add('bg-gray-800'); }
             setTimeout(() => { feedbackEl.classList.add('hidden'); }, 2500);
         }
+
+        // Expondo funções para o escopo global para que o onclick funcione
+        window.changeTab = changeTab;
+        window.backToClientSelection = backToClientSelection;
+        window.renderClientList = renderClientList;
+        window.selectClient = selectClient;
+        window.startNewOrderWithoutClient = startNewOrderWithoutClient;
+        window.addClient = addClient;
+        window.removeClient = removeClient;
+        window.addProduct = addProduct;
+        window.removeProduct = removeProduct;
+        window.addItemToOrder = addItemToOrder;
+        window.removeItemFromOrder = removeItemFromOrder;
+        window.clearOrder = clearOrder;
+        window.generateOrderPDF = generateOrderPDF;
+
     </script>
 </body>
 </html>
