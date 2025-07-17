@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pedidos Têxteis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Adicionando a biblioteca jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Adicionando o plugin autoTable para tabelas melhores -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @keyframes flash {
+            0% { background-color: #d1fae5; }
+            100% { background-color: transparent; }
+        }
+        .flash-animation {
+            animation: flash 0.5s ease-out;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto max-w-3xl p-4">
+
+        <header class="text-center my-6">
+            <h1 class="text-3xl font-bold text-gray-700">Pedidos Têxteis</h1>
+            <p class="text-gray-500">Gere pedidos de forma rápida e fácil</p>
+        </header>
+
+        <div class="mb-6 bg-white rounded-lg shadow p-2 flex justify-around">
+            <button onclick="changeTab('order')" id="tab-order" class="tab-button flex-1 py-2 px-4 text-center font-semibold text-white bg-blue-600 rounded-md">Novo Pedido</button>
+            <button onclick="changeTab('products')" id="tab-products" class="tab-button flex-1 py-2 px-4 text-center font-semibold text-gray-600">Produtos</button>
+        </div>
+
+        <main id="main-content">
+            <div id="order-section">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">1. Informações do Pedido e Cliente</h2>
+                    
+                    <div class="mb-6">
+                        <label for="price-table-select" class="block text-sm font-medium text-gray-700 mb-1">Tabela de Preço a ser usada no Pedido:</label>
+                        <select id="price-table-select" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="avista">Preço à Vista</option>
+                            <option value="30d">Preço 30 Dias</option>
+                            <option value="60d">Preço 60 Dias</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-8">
+                        <input type="text" id="client-name" placeholder="Razão Social / Nome do Cliente" class="md:col-span-2 block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="client-cnpj" placeholder="CNPJ / CPF" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="client-ie" placeholder="Inscrição Estadual" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="client-address" placeholder="Endereço Completo" class="md:col-span-2 block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="client-city" placeholder="Cidade" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="client-state" placeholder="Estado" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="client-phone" placeholder="Telefone" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="payment-condition" placeholder="Condição de Pagamento" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="number" id="shipping-cost" placeholder="Valor do Frete (Ex: 50.00)" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <input type="text" id="order-number" placeholder="Número do Pedido (opcional)" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <textarea id="observations" placeholder="Observações (OBS)" rows="3" class="md:col-span-2 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                    </div>
+
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">2. Adicionar Produtos</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                        <div class="md:col-span-2">
+                            <label for="product-code" class="block text-sm font-medium text-gray-700">Código do Produto</label>
+                            <input type="text" id="product-code" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="quantity" class="block text-sm font-medium text-gray-700">Quantidade</label>
+                            <input type="number" id="quantity" value="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <button onclick="addItemToOrder()" class="md:col-span-1 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Adicionar</button>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-lg font-semibold mb-2">Itens do Pedido</h3>
+                        <div id="order-items-list" class="space-y-2">
+                            <p class="text-gray-500">Nenhum item adicionado ainda.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t-2 border-dashed">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold">TOTAL:</span>
+                            <span id="order-total" class="text-2xl font-bold text-blue-600">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex gap-4">
+                        <button onclick="generateOrderPDF()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">Gerar PDF do Pedido</button>
+                        <button onclick="clearOrder()" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-md transition duration-300">Limpar Pedido</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="products-section" class="hidden">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">Gerenciar Produtos</h2>
+                    
+                    <div class="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-300">
+                        <h3 class="font-semibold mb-2 text-yellow-800">Importar Produtos da Planilha</h3>
+                        <p class="text-sm text-gray-600 mb-2">Converta sua planilha para o formato JSON e cole o texto abaixo.</p>
+                        <textarea id="json-import-data" rows="5" placeholder='[
+  { "code": "101", "description": "Malha PV Branca", "price_avista": 22.50, "price_30d": 23.50, "price_60d": 24.50 },
+  { "code": "102", "description": "Moletom Preto", "price_avista": 35.00, "price_30d": 36.50, "price_60d": 38.00 }
+]' class="w-full p-2 border rounded-md bg-white font-mono text-sm"></textarea>
+                        <button onclick="importProductsFromJSON()" class="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md transition duration-300">Carregar Dados e Substituir Lista</button>
+                    </div>
+
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                        <h3 class="font-semibold mb-2">Adicionar Novo Produto Manualmente</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="new-prod-code" placeholder="Código" class="block w-full rounded-md border-gray-300 shadow-sm">
+                            <input type="text" id="new-prod-desc" placeholder="Descrição" class="block w-full rounded-md border-gray-300 shadow-sm">
+                            <input type="number" id="new-prod-price-avista" placeholder="Preço à Vista (Ex: 25.50)" class="block w-full rounded-md border-gray-300 shadow-sm">
+                            <input type="number" id="new-prod-price-30d" placeholder="Preço 30 dias (Ex: 26.50)" class="block w-full rounded-md border-gray-300 shadow-sm">
+                            <input type="number" id="new-prod-price-60d" placeholder="Preço 60 dias (Ex: 27.50)" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <button onclick="addProduct()" class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Salvar Produto</button>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Produtos Cadastrados</h3>
+                        <div id="product-list" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="feedback-message" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg">
+        <p></p>
+    </div>
+
+<script>
+    let products = [];
+    let currentOrder = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProductsFromStorage();
+        renderProducts();
+        renderOrder();
+        
+        document.getElementById('product-code').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('quantity').focus();
+                document.getElementById('quantity').select();
+            }
+        });
+        document.getElementById('quantity').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addItemToOrder();
+            }
+        });
+    });
+
+    function loadProductsFromStorage() {
+        const storedProducts = localStorage.getItem('textileAppProducts');
+        if (storedProducts) {
+            products = JSON.parse(storedProducts);
+        } else {
+            // Base de dados de produtos pré-definida
+            products = [
+                { "code": "100015", "description": "Jogo Toalhas de Cozinha Semaninha", "price_avista": 27.44, "price_30d": 28.81, "price_60d": 30.25 },
+                { "code": "100021", "description": "Toalha de Cozinha p/ Bordar", "price_avista": 3.37, "price_30d": 3.54, "price_60d": 3.71 },
+                { "code": "100022", "description": "Toalha de Cozinha Estampada", "price_avista": 3.63, "price_30d": 3.82, "price_60d": 4.01 },
+                { "code": "100085", "description": "Toalha de Cozinha Felpuda Estampada", "price_avista": 4.17, "price_30d": 4.38, "price_60d": 4.60 },
+                { "code": "100092", "description": "Toalha de Cozinha Felpuda Xadrez", "price_avista": 3.27, "price_30d": 3.43, "price_60d": 3.60 },
+                { "code": "100101", "description": "Toalha de Cozinha Transfer", "price_avista": 3.76, "price_30d": 3.94, "price_60d": 4.14 },
+                { "code": "100111", "description": "Toalha de Cozinha Gourmand", "price_avista": 6.90, "price_30d": 7.25, "price_60d": 7.61 },
+                { "code": "100012", "description": "Kit Social p/ Bordar", "price_avista": 4.36, "price_30d": 4.58, "price_60d": 4.81 },
+                { "code": "100016", "description": "Lavabo", "price_avista": 2.65, "price_30d": 2.78, "price_60d": 2.92 },
+                { "code": "100018", "description": "Lavabo Estampada", "price_avista": 3.04, "price_30d": 3.19, "price_60d": 3.35 },
+                { "code": "100026", "description": "Social Estampada", "price_avista": 1.76, "price_30d": 1.85, "price_60d": 1.94 },
+                { "code": "100027", "description": "Kit Social Estampada", "price_avista": 5.46, "price_30d": 5.74, "price_60d": 6.03 },
+                { "code": "100029", "description": "Social p/ Bordar", "price_avista": 1.39, "price_30d": 1.46, "price_60d": 1.53 },
+                { "code": "100074", "description": "Lavabo Athelier", "price_avista": 4.36, "price_30d": 4.58, "price_60d": 4.81 },
+                { "code": "100083", "description": "Lavabo c/Transfer", "price_avista": 3.39, "price_30d": 3.57, "price_60d": 3.75 },
+                { "code": "100131", "description": "Social p/ Sublimação", "price_avista": 1.64, "price_30d": 1.73, "price_60d": 1.82 },
+                { "code": "100142", "description": "Lavabo p/ Sublimação Total Somente Branca", "price_avista": 3.12, "price_30d": 3.28, "price_60d": 3.44 },
+                { "code": "100145", "description": "Lavabo Fitness", "price_avista": 5.46, "price_30d": 5.74, "price_60d": 6.03 },
+                { "code": "100151", "description": "Lavabo Infantil", "price_avista": 5.18, "price_30d": 5.43, "price_60d": 5.70 },
+                { "code": "100003", "description": "Jogo Popular-4 Peças", "price_avista": 32.79, "price_30d": 34.43, "price_60d": 36.16 },
+                { "code": "100005", "description": "Jogo Nobre p/ Bordar - 4 Peças", "price_avista": 44.42, "price_30d": 46.64, "price_60d": 48.98 },
+                { "code": "100025", "description": "Jogo Carina - 2 Peças", "price_avista": 35.98, "price_30d": 37.78, "price_60d": 39.66 },
+                { "code": "100030", "description": "Jogo Nobre Bordado - 2 Peças", "price_avista": 29.00, "price_30d": 30.45, "price_60d": 31.98 },
+                { "code": "100031", "description": "Jogo Nobre Bordado - 4 Peças", "price_avista": 51.16, "price_30d": 53.73, "price_60d": 56.42 },
+                { "code": "100032", "description": "Jogo Popular-2 Peças", "price_avista": 19.81, "price_30d": 20.80, "price_60d": 21.85 },
+                { "code": "100034", "description": "Jogo Nobre p/ Bordar-2 Peças", "price_avista": 25.63, "price_30d": 26.91, "price_60d": 28.26 },
+                { "code": "100035", "description": "Jogo Carina - 4 Peças", "price_avista": 65.12, "price_30d": 68.38, "price_60d": 71.79 },
+                { "code": "100051", "description": "Jogo Luxo-2 Peças", "price_avista": 31.07, "price_30d": 32.63, "price_60d": 34.26 },
+                { "code": "100052", "description": "Jogo Luxo - 4 Peças", "price_avista": 55.30, "price_30d": 58.06, "price_60d": 60.96 },
+                { "code": "100067", "description": "Jogo Jasmim-2 Peças", "price_avista": 36.32, "price_30d": 38.13, "price_60d": 40.04 },
+                { "code": "100071", "description": "Jogo Jasmim-4 Peças", "price_avista": 65.79, "price_30d": 69.09, "price_60d": 72.54 },
+                { "code": "100112", "description": "Jogo Athelier-2 Peças", "price_avista": 39.12, "price_30d": 41.08, "price_60d": 43.14 },
+                { "code": "100113", "description": "Jogo Athelier - 4 Peças", "price_avista": 71.42, "price_30d": 74.99, "price_60d": 78.74 },
+                { "code": "100114", "description": "Jogo Charme-2 Peças", "price_avista": 43.69, "price_30d": 45.87, "price_60d": 48.16 },
+                { "code": "100115", "description": "Jogo Charme - 4 Peças", "price_avista": 80.51, "price_30d": 84.54, "price_60d": 88.77 },
+                { "code": "100116", "description": "Jogo Esmeralda - 2 Peças", "price_avista": 46.94, "price_30d": 49.29, "price_60d": 51.75 },
+                { "code": "100117", "description": "Jogo Esmeralda -4 Peças", "price_avista": 87.04, "price_30d": 91.39, "price_60d": 95.96 },
+                { "code": "100119", "description": "Jogo Paris - 2 Peças", "price_avista": 42.80, "price_30d": 44.94, "price_60d": 47.18 },
+                { "code": "100120", "description": "Jogo Paris - 4 Peças", "price_avista": 78.75, "price_30d": 82.69, "price_60d": 86.83 },
+                { "code": "100121", "description": "Jogo Veneza - 2 Peças", "price_avista": 45.10, "price_30d": 47.36, "price_60d": 49.73 },
+                { "code": "100148", "description": "Jogo Veneza - 4 Peças", "price_avista": 83.35, "price_30d": 87.53, "price_60d": 91.91 },
+                { "code": "100125", "description": "Jogo Melissa - 2 Peças", "price_avista": 32.43, "price_30d": 34.05, "price_60d": 35.75 },
+                { "code": "100126", "description": "Jogo Melissa -4 Peças", "price_avista": 58.03, "price_30d": 60.93, "price_60d": 63.97 },
+                { "code": "100133", "description": "Jogo Requinte-2 Peças", "price_avista": 24.60, "price_30d": 25.83, "price_60d": 27.12 },
+                { "code": "100134", "description": "Jogo Requinte - 4 Peças", "price_avista": 42.37, "price_30d": 44.48, "price_60d": 46.71 },
+                { "code": "100135", "description": "Jogo Safari-2 Peças", "price_avista": 34.80, "price_30d": 36.54, "price_60d": 38.36 },
+                { "code": "100136", "description": "Jogo Safari-4 Peças", "price_avista": 62.77, "price_30d": 65.91, "price_60d": 69.21 },
+                { "code": "100137", "description": "Jogo Grécia 2 Peças", "price_avista": 50.59, "price_30d": 53.12, "price_60d": 55.78 },
+                { "code": "100138", "description": "Jogo Grecia - 4 Peças", "price_avista": 94.36, "price_30d": 99.07, "price_60d": 104.03 },
+                { "code": "100146", "description": "Jogo Athenas 2 Peças", "price_avista": 54.17, "price_30d": 56.87, "price_60d": 59.71 },
+                { "code": "100149", "description": "Jogo Athenas 4 Peças", "price_avista": 97.34, "price_30d": 102.20, "price_60d": 107.31 },
+                { "code": "100132", "description": "Kit Banho Infantil Cristal - 2 Peças (Caixinha)", "price_avista": 44.42, "price_30d": 46.64, "price_60d": 48.98 },
+                { "code": "100006", "description": "Banho Nobre Bordada", "price_avista": 14.84, "price_30d": 15.58, "price_60d": 16.36 },
+                { "code": "100007", "description": "Banho Nobre Baby Bordada", "price_avista": 17.30, "price_30d": 18.16, "price_60d": 19.07 },
+                { "code": "100008", "description": "Banho Popular", "price_avista": 8.76, "price_30d": 9.20, "price_60d": 9.66 },
+                { "code": "100013", "description": "Banho Europa", "price_avista": 22.43, "price_30d": 23.55, "price_60d": 24.73 },
+                { "code": "100017", "description": "Banho Paris", "price_avista": 24.63, "price_30d": 25.86, "price_60d": 27.16 },
+                { "code": "100019", "description": "Banho Nobre p/ Bordar", "price_avista": 13.13, "price_30d": 13.79, "price_60d": 14.48 },
+                { "code": "100023", "description": "Banho Charme", "price_avista": 26.11, "price_30d": 27.40, "price_60d": 28.77 },
+                { "code": "100037", "description": "Banho Bebê Aveludada c/ Capuz", "price_avista": 14.57, "price_30d": 15.30, "price_60d": 16.07 },
+                { "code": "100040", "description": "Banho Requinte", "price_avista": 12.31, "price_30d": 12.93, "price_60d": 13.57 },
+                { "code": "100048", "description": "Banho Luxo", "price_avista": 15.66, "price_30d": 16.45, "price_60d": 17.27 },
+                { "code": "100053", "description": "Banho Safari", "price_avista": 18.78, "price_30d": 19.72, "price_60d": 20.70 },
+                { "code": "100054", "description": "Banhão Aveludada Toalha de Praia Miami", "price_avista": 36.65, "price_30d": 38.48, "price_60d": 40.40 },
+                { "code": "100060", "description": "Banho Jasmim", "price_avista": 20.26, "price_30d": 21.28, "price_60d": 22.34 },
+                { "code": "100065", "description": "Banho Athenas", "price_avista": 30.34, "price_30d": 31.86, "price_60d": 33.44 },
+                { "code": "100068", "description": "Banho Carina", "price_avista": 20.08, "price_30d": 21.08, "price_60d": 22.14 },
+                { "code": "100072", "description": "Banho Athelier", "price_avista": 22.49, "price_30d": 23.62, "price_60d": 24.81 },
+                { "code": "100082", "description": "Toalha de Chão Felpuda", "price_avista": 6.04, "price_30d": 6.35, "price_60d": 6.67 },
+                { "code": "100086", "description": "Toalha de Praia Listrada", "price_avista": 23.51, "price_30d": 24.68, "price_60d": 25.91 },
+                { "code": "100088", "description": "Banho Jacquard", "price_avista": 18.46, "price_30d": 19.38, "price_60d": 20.36 },
+                { "code": "100090", "description": "Banho Madri", "price_avista": 16.64, "price_30d": 17.47, "price_60d": 18.34 },
+                { "code": "200090", "description": "Banhão Madri", "price_avista": 21.23, "price_30d": 22.29, "price_60d": 23.40 },
+                { "code": "100094", "description": "Banho Infantil Cristal", "price_avista": 18.49, "price_30d": 19.41, "price_60d": 20.38 },
+                { "code": "100095", "description": "Banho Grécia", "price_avista": 31.22, "price_30d": 32.79, "price_60d": 34.43 },
+                { "code": "100097", "description": "Banho Veneza", "price_avista": 27.26, "price_30d": 28.62, "price_60d": 30.05 },
+                { "code": "100099", "description": "Banho Esmeralda", "price_avista": 28.26, "price_30d": 29.67, "price_60d": 31.15 },
+                { "code": "100102", "description": "Banho Hotel", "price_avista": 32.95, "price_30d": 34.59, "price_60d": 36.32 },
+                { "code": "100123", "description": "Banho Melissa", "price_avista": 17.81, "price_30d": 18.71, "price_60d": 19.64 },
+                { "code": "100141", "description": "Banho Soft Color", "price_avista": 16.13, "price_30d": 16.94, "price_60d": 17.79 },
+                { "code": "100143", "description": "Banho p/ Sublimação Total", "price_avista": 16.04, "price_30d": 16.85, "price_60d": 17.69 },
+                { "code": "100004", "description": "Rosto Nobre Bordada", "price_avista": 7.33, "price_30d": 7.69, "price_60d": 8.08 },
+                { "code": "100009", "description": "Rosto Popular", "price_avista": 4.21, "price_30d": 4.42, "price_60d": 4.63 },
+                { "code": "100020", "description": "Rosto Nobre p/ Bordar", "price_avista": 5.67, "price_30d": 5.96, "price_60d": 6.26 },
+                { "code": "100041", "description": "Rosto Charme", "price_avista": 10.75, "price_30d": 11.29, "price_60d": 11.86 },
+                { "code": "100047", "description": "Rosto Requinte", "price_avista": 5.46, "price_30d": 5.74, "price_60d": 6.03 },
+                { "code": "100049", "description": "Rosto Luxo", "price_avista": 8.58, "price_30d": 9.00, "price_60d": 9.45 },
+                { "code": "100056", "description": "Rosto Safari", "price_avista": 9.18, "price_30d": 9.64, "price_60d": 10.12 },
+                { "code": "100061", "description": "Rosto Jasmim", "price_avista": 9.22, "price_30d": 9.68, "price_60d": 10.17 },
+                { "code": "100066", "description": "Rosto Athenas", "price_avista": 14.62, "price_30d": 15.35, "price_60d": 16.12 },
+                { "code": "100069", "description": "Rosto Carina", "price_avista": 9.06, "price_30d": 9.51, "price_60d": 9.98 },
+                { "code": "100070", "description": "Rosto Europa", "price_avista": 10.12, "price_30d": 10.63, "price_60d": 11.16 },
+                { "code": "100073", "description": "Rosto Athelier", "price_avista": 9.80, "price_30d": 10.29, "price_60d": 10.81 },
+                { "code": "100084", "description": "Rosto Paris", "price_avista": 11.33, "price_30d": 11.89, "price_60d": 12.49 },
+                { "code": "100096", "description": "Rosto Grécia", "price_avista": 12.54, "price_30d": 13.17, "price_60d": 13.82 },
+                { "code": "100098", "description": "Rosto Veneza", "price_avista": 11.02, "price_30d": 11.57, "price_60d": 12.14 },
+                { "code": "100100", "description": "Rosto Esmeralda", "price_avista": 11.85, "price_30d": 12.44, "price_60d": 13.06 },
+                { "code": "100103", "description": "Rosto Hotel", "price_avista": 14.61, "price_30d": 15.33, "price_60d": 16.10 },
+                { "code": "100105", "description": "Rosto Salão de Beleza", "price_avista": 6.85, "price_30d": 7.20, "price_60d": 7.56 },
+                { "code": "100106", "description": "Rosto Jacquard", "price_avista": 7.94, "price_30d": 8.34, "price_60d": 8.75 },
+                { "code": "100124", "description": "Rosto Melissa", "price_avista": 7.79, "price_30d": 8.18, "price_60d": 8.59 },
+                { "code": "100144", "description": "Rosto p/ Sublimação Total", "price_avista": 6.50, "price_30d": 6.82, "price_60d": 7.16 },
+                { "code": "100002", "description": "Piso Felpudo Pé", "price_avista": 9.57, "price_30d": 10.05, "price_60d": 10.56 },
+                { "code": "100104", "description": "Piso Felpudo Hotel", "price_avista": 14.61, "price_30d": 15.33, "price_60d": 16.10 },
+                { "code": "100107", "description": "Colcha de Felpa Califórnia Casal", "price_avista": 126.98, "price_30d": 133.34, "price_60d": 140.01 },
+                { "code": "100110", "description": "Colcha de Felpa Califórnia Solteiro", "price_avista": 107.70, "price_30d": 113.08, "price_60d": 118.74 },
+                { "code": "100010", "description": "Toalhas de 2ª Qualidade", "price_avista": 44.62, "price_30d": 46.85, "price_60d": 49.20 },
+                { "code": "100057", "description": "Felpudo em Metro", "price_avista": 20.18, "price_30d": 21.19, "price_60d": 22.25 }
+            ];
+            saveProductsToStorage();
+        }
+    }
+
+    function saveProductsToStorage() {
+        localStorage.setItem('textileAppProducts', JSON.stringify(products));
+    }
+
+    function renderProducts() {
+        const productListEl = document.getElementById('product-list');
+        productListEl.innerHTML = '';
+        if (products.length === 0) {
+            productListEl.innerHTML = '<p class="text-gray-500">Nenhum produto cadastrado.</p>';
+            return;
+        }
+        products.forEach((product, index) => {
+            const productEl = document.createElement('div');
+            productEl.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg border';
+            productEl.innerHTML = `
+                <div>
+                    <p class="font-semibold text-gray-800">${product.code} - ${product.description}</p>
+                    <div class="text-xs text-gray-600 mt-1">
+                        <span>À Vista: <strong class="text-blue-600">R$ ${product.price_avista.toFixed(2).replace('.', ',')}</strong></span> |
+                        <span>30d: <strong class="text-blue-600">R$ ${product.price_30d.toFixed(2).replace('.', ',')}</strong></span> |
+                        <span>60d: <strong class="text-blue-600">R$ ${product.price_60d.toFixed(2).replace('.', ',')}</strong></span>
+                    </div>
+                </div>
+                <button onclick="removeProduct(${index})" class="text-red-500 hover:text-red-700 font-semibold self-center">Remover</button>
+            `;
+            productListEl.appendChild(productEl);
+        });
+    }
+
+    function renderOrder() {
+        const orderItemsList = document.getElementById('order-items-list');
+        orderItemsList.innerHTML = '';
+        if (currentOrder.length === 0) {
+            orderItemsList.innerHTML = '<p class="text-gray-500">Nenhum item adicionado ainda.</p>';
+            document.getElementById('order-total').textContent = 'R$ 0,00';
+            return;
+        }
+        currentOrder.forEach((item, index) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'flex justify-between items-center p-3 bg-blue-50 rounded-lg flash-animation';
+            const subtotal = item.quantity * item.price;
+            itemEl.innerHTML = `
+                <div>
+                    <p class="font-semibold">${item.description} (${item.code})</p>
+                    <p class="text-sm text-gray-600">${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold text-lg">R$ ${subtotal.toFixed(2).replace('.', ',')}</p>
+                    <button onclick="removeItemFromOrder(${index})" class="text-xs text-red-500 hover:text-red-700">remover</button>
+                </div>
+            `;
+            orderItemsList.appendChild(itemEl);
+        });
+        calculateTotal();
+    }
+
+    function calculateTotal() {
+        const total = currentOrder.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        document.getElementById('order-total').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    }
+
+    function importProductsFromJSON() {
+        const jsonText = document.getElementById('json-import-data').value;
+        if (!jsonText) {
+            showFeedback('Cole os dados da planilha no campo de texto primeiro.', 'error');
+            return;
+        }
+        try {
+            const importedData = JSON.parse(jsonText);
+            if (!Array.isArray(importedData) || (importedData.length > 0 && (!importedData[0].code || !importedData[0].description || importedData[0].price_avista === undefined || importedData[0].price_30d === undefined || importedData[0].price_60d === undefined))) {
+                showFeedback('Formato de dados inválido. Verifique se todos os preços estão presentes.', 'error');
+                return;
+            }
+            products = importedData;
+            saveProductsToStorage();
+            renderProducts();
+            document.getElementById('json-import-data').value = '';
+            showFeedback(`${products.length} produtos importados com sucesso!`, 'success');
+        } catch (error) {
+            showFeedback('Erro ao ler os dados. Verifique o formato.', 'error');
+        }
+    }
+
+    function addProduct() {
+        const code = document.getElementById('new-prod-code').value.trim();
+        const description = document.getElementById('new-prod-desc').value.trim();
+        const price_avista = parseFloat(document.getElementById('new-prod-price-avista').value.replace(',', '.'));
+        const price_30d = parseFloat(document.getElementById('new-prod-price-30d').value.replace(',', '.'));
+        const price_60d = parseFloat(document.getElementById('new-prod-price-60d').value.replace(',', '.'));
+
+        if (!code || !description || isNaN(price_avista) || isNaN(price_30d) || isNaN(price_60d)) {
+            showFeedback('Preencha todos os campos do produto, incluindo os 3 preços.', 'error');
+            return;
+        }
+        if (products.some(p => p.code === code)) {
+            showFeedback('Já existe um produto com este código.', 'error');
+            return;
+        }
+        products.push({ code, description, price_avista, price_30d, price_60d });
+        saveProductsToStorage();
+        renderProducts();
+        document.getElementById('new-prod-code').value = '';
+        document.getElementById('new-prod-desc').value = '';
+        document.getElementById('new-prod-price-avista').value = '';
+        document.getElementById('new-prod-price-30d').value = '';
+        document.getElementById('new-prod-price-60d').value = '';
+        showFeedback('Produto adicionado com sucesso!', 'success');
+    }
+
+    function removeProduct(index) {
+        products.splice(index, 1);
+        saveProductsToStorage();
+        renderProducts();
+        showFeedback('Produto removido.', 'success');
+    }
+
+    function addItemToOrder() {
+        const codeInput = document.getElementById('product-code');
+        const quantityInput = document.getElementById('quantity');
+        const code = codeInput.value.trim();
+        const quantity = parseInt(quantityInput.value);
+
+        if (!code || isNaN(quantity) || quantity <= 0) {
+            showFeedback('Código ou quantidade inválida.', 'error');
+            return;
+        }
+        const product = products.find(p => p.code === code);
+        if (!product) {
+            showFeedback('Produto não encontrado.', 'error');
+            codeInput.focus();
+            codeInput.select();
+            return;
+        }
+        
+        const priceTable = document.getElementById('price-table-select').value;
+        let selectedPrice;
+        if (priceTable === '30d') {
+            selectedPrice = product.price_30d;
+        } else if (priceTable === '60d') {
+            selectedPrice = product.price_60d;
+        } else {
+            selectedPrice = product.price_avista;
+        }
+
+        const existingItem = currentOrder.find(item => item.code === code);
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            currentOrder.push({ 
+                code: product.code, 
+                description: product.description,
+                quantity: quantity,
+                price: selectedPrice
+            });
+        }
+        renderOrder();
+        codeInput.value = '';
+        quantityInput.value = '1';
+        codeInput.focus();
+    }
+    
+    function removeItemFromOrder(index) {
+        currentOrder.splice(index, 1);
+        renderOrder();
+    }
+
+    function clearOrder() {
+        currentOrder = [];
+        const fieldsToClear = ['client-name', 'client-cnpj', 'client-ie', 'client-address', 'client-city', 'client-state', 'client-phone', 'payment-condition', 'shipping-cost', 'order-number', 'observations'];
+        fieldsToClear.forEach(id => document.getElementById(id).value = '');
+        renderOrder();
+        showFeedback('Pedido limpo.', 'success');
+    }
+
+    function changeTab(tabName) {
+        const orderSection = document.getElementById('order-section');
+        const productsSection = document.getElementById('products-section');
+        const orderTabBtn = document.getElementById('tab-order');
+        const productsTabBtn = document.getElementById('tab-products');
+
+        orderSection.classList.toggle('hidden', tabName !== 'order');
+        productsSection.classList.toggle('hidden', tabName === 'order');
+        orderTabBtn.classList.toggle('bg-blue-600', tabName === 'order');
+        orderTabBtn.classList.toggle('text-white', tabName === 'order');
+        orderTabBtn.classList.toggle('text-gray-600', tabName !== 'order');
+        productsTabBtn.classList.toggle('bg-blue-600', tabName !== 'order');
+        productsTabBtn.classList.toggle('text-white', tabName !== 'order');
+        productsTabBtn.classList.toggle('text-gray-600', tabName === 'order');
+    }
+    
+    function generateOrderPDF() {
+        if (currentOrder.length === 0) {
+            showFeedback('Adicione itens ao pedido primeiro.', 'error');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+
+        const clientName = document.getElementById('client-name').value;
+        const clientCnpj = document.getElementById('client-cnpj').value;
+        const clientIe = document.getElementById('client-ie').value;
+        const clientAddress = document.getElementById('client-address').value;
+        const clientCity = document.getElementById('client-city').value;
+        const clientState = document.getElementById('client-state').value;
+        const clientPhone = document.getElementById('client-phone').value;
+        const paymentCondition = document.getElementById('payment-condition').value;
+        const shippingCost = parseFloat(document.getElementById('shipping-cost').value.replace(',', '.')) || 0;
+        let orderNumber = document.getElementById('order-number').value;
+        const observations = document.getElementById('observations').value;
+        
+        const now = new Date();
+        const emissionDate = now.toLocaleDateString('pt-BR');
+        if (!orderNumber) {
+            orderNumber = now.getTime();
+        }
+
+        const drawHeader = () => {
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'bold');
+            doc.text('BRUTEXTIL', 40, 50);
+            doc.setFontSize(12);
+            doc.text('Indústria e Comércio Ltda.', 40, 65);
+
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.text('BRUTEXTIL INDÚSTRIA E COMÉRCIO LTDA.', 300, 40);
+            doc.text('Rua Augusto Klapoth, nº 734 - Santa Luzia - Brusque / SC', 300, 50);
+            doc.text('CEP: 88.357-101     Fone/FAX: (47) 3351-8327 / 3351-8611', 300, 60);
+            doc.text('E-mail: brutextil@terra.com.br', 300, 70);
+        };
+
+        const drawClientInfo = () => {
+            const startY = 90;
+
+            doc.rect(440, startY, 115, 45); 
+            doc.setFontSize(10).setFont('helvetica', 'bold');
+            doc.text('PEDIDO', 497, startY + 15, { align: 'center' });
+            doc.setFontSize(14);
+            doc.text(`Nº ${orderNumber}`, 497, startY + 34, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+
+            const row1Y = startY;
+            doc.rect(40, row1Y, 400, 22.5);
+            doc.setFontSize(7).text('RAZÃO SOCIAL:', 42, row1Y + 14);
+            doc.setFontSize(10).text(clientName, 115, row1Y + 14);
+
+            const row2Y = startY + 22.5;
+            doc.rect(40, row2Y, 190, 22.5);
+            doc.rect(230, row2Y, 110, 22.5);
+            doc.rect(340, row2Y, 100, 22.5);
+
+            doc.setFontSize(7).text('CNPJ / CPF:', 42, row2Y + 14);
+            doc.setFontSize(10).text(clientCnpj, 95, row2Y + 14);
+
+            doc.setFontSize(7).text('INSCRIÇÃO ESTADUAL:', 232, row2Y + 14);
+            doc.setFontSize(10).text(clientIe, 310, row2Y + 14);
+
+            doc.setFontSize(7).text('DATA DE EMISSÃO:', 342, row2Y + 14);
+            doc.setFontSize(10).text(emissionDate, 405, row2Y + 14);
+
+            const row3Y = startY + 45;
+            doc.rect(40, row3Y, 340, 20);
+            doc.rect(380, row3Y, 175, 20);
+
+            doc.setFontSize(7).text('ENDEREÇO:', 42, row3Y + 12);
+            doc.setFontSize(10).text(clientAddress, 95, row3Y + 12);
+
+            doc.setFontSize(7).text('CONDIÇÃO DE PGMTO:', 382, row3Y + 12);
+            doc.setFontSize(10).text(paymentCondition, 465, row3Y + 12);
+
+            const row4Y = startY + 65;
+            doc.rect(40, row4Y, 200, 20);
+            doc.rect(240, row4Y, 60, 20);
+            doc.rect(300, row4Y, 255, 20);
+
+            doc.setFontSize(7).text('CIDADE:', 42, row4Y + 12);
+            doc.setFontSize(10).text(clientCity, 80, row4Y + 12);
+
+            doc.setFontSize(7).text('ESTADO:', 242, row4Y + 12);
+            doc.setFontSize(10).text(clientState, 275, row4Y + 12);
+
+            doc.setFontSize(7).text('TELEFONE:', 302, row4Y + 12);
+            doc.setFontSize(10).text(clientPhone, 345, row4Y + 12);
+        };
+
+        const drawTable = () => {
+            const tableBody = currentOrder.map(item => {
+                const subtotal = item.quantity * item.price;
+                return [
+                    item.code,
+                    item.description,
+                    item.quantity,
+                    `R$ ${item.price.toFixed(2).replace('.', ',')}`,
+                    `R$ ${subtotal.toFixed(2).replace('.', ',')}`
+                ];
+            });
+
+            doc.autoTable({
+                startY: 180,
+                head: [['Código do Produto', 'Descrição do Produto', 'Quantid.', 'Preço Unit./tabela', 'Sub.Total']],
+                body: tableBody,
+                theme: 'grid',
+                headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontSize: 8, halign: 'center' },
+                bodyStyles: { fontSize: 8 },
+                columnStyles: {
+                    0: { cellWidth: 60, halign: 'center' },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 50, halign: 'center' },
+                    3: { cellWidth: 70, halign: 'right' },
+                    4: { cellWidth: 70, halign: 'right' },
+                }
+            });
+        };
+        
+        const drawFooter = () => {
+            const finalY = doc.lastAutoTable.finalY + 20;
+            const totalItems = currentOrder.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+            const totalGeral = totalItems + shippingCost;
+
+            doc.rect(40, finalY, 350, 80);
+            doc.setFontSize(7);
+            doc.text('OBS:', 42, finalY + 8);
+            doc.setFontSize(9);
+            doc.text(doc.splitTextToSize(observations, 340), 45, finalY + 20);
+
+            doc.rect(400, finalY, 155, 20);
+            doc.rect(400, finalY + 20, 155, 20);
+            doc.rect(400, finalY + 40, 155, 20);
+
+            doc.setFontSize(9);
+            doc.text('Valor Total:', 405, finalY + 13);
+            doc.text(`R$ ${totalItems.toFixed(2).replace('.', ',')}`, 550, finalY + 13, { align: 'right' });
+            
+            doc.text('Frete:', 405, finalY + 33);
+            doc.text(`R$ ${shippingCost.toFixed(2).replace('.', ',')}`, 550, finalY + 33, { align: 'right' });
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total Geral:', 405, finalY + 53);
+            doc.text(`R$ ${totalGeral.toFixed(2).replace('.', ',')}`, 550, finalY + 53, { align: 'right' });
+
+            doc.line(40, finalY + 100, 300, finalY + 100);
+            doc.text('Assinatura do Cliente', 170, finalY + 110, { align: 'center' });
+        };
+
+        drawHeader();
+        drawClientInfo();
+        drawTable();
+        drawFooter();
+        
+        doc.save(`pedido-${orderNumber}.pdf`);
+        showFeedback('Gerando PDF...', 'success');
+    }
+    
+    function showFeedback(message, type = 'success') {
+        const feedbackEl = document.getElementById('feedback-message');
+        const p = feedbackEl.querySelector('p');
+        p.textContent = message;
+        
+        feedbackEl.classList.remove('hidden');
+        feedbackEl.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 text-white py-2 px-5 rounded-lg shadow-lg';
+        if(type === 'error'){
+            feedbackEl.classList.add('bg-red-600');
+        } else {
+            feedbackEl.classList.add('bg-gray-800');
+        }
+
+        setTimeout(() => {
+            feedbackEl.classList.add('hidden');
+        }, 2500);
+    }
+
+</script>
+
+</body>
+</html>
+
